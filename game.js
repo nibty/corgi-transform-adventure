@@ -282,6 +282,8 @@ let gameStarted = false;
 let currentLevel = 1;
 let treatCount = 0;
 let lastTransformTime = 0;
+let playerLife = 100;
+let maxLife = 100;
 
 // Message system
 let gameMessage = '';
@@ -368,6 +370,62 @@ function drawTreatCounter() {
     }
 }
 
+function drawLifeBar() {
+    ctx.save();
+    
+    // Position
+    const x = 20;
+    const y = 60;
+    const width = 200;
+    const height = 25;
+    
+    // Background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(x - 5, y - 5, width + 10, height + 10);
+    
+    // Life bar background
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x, y, width, height);
+    
+    // Life bar fill
+    const lifePercent = Math.max(0, playerLife) / maxLife;
+    const lifeWidth = width * lifePercent;
+    
+    // Color based on life amount
+    if (lifePercent > 0.6) {
+        ctx.fillStyle = '#4CAF50';
+    } else if (lifePercent > 0.3) {
+        ctx.fillStyle = '#FFC107';
+    } else {
+        ctx.fillStyle = '#F44336';
+    }
+    
+    ctx.fillRect(x, y, lifeWidth, height);
+    
+    // Border
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, width, height);
+    
+    // Text
+    ctx.font = 'bold 14px Arial';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(player && !player.isHuman ? 'Energy' : 'Health', x + width/2, y + height/2);
+    
+    // Low energy warning
+    if (playerLife < 30 && !player.isHuman) {
+        const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = '#F44336';
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText('DANGER! Press N to nap or die!', x + width/2, y + height + 15);
+    }
+    
+    ctx.restore();
+}
+
 // Canvas setup
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -403,13 +461,6 @@ window.addEventListener('keyup', (e) => {
     e.preventDefault();
 });
 
-// Volume control
-document.addEventListener('DOMContentLoaded', () => {
-    const volumeSlider = document.getElementById('volumeSlider');
-    volumeSlider.addEventListener('input', (e) => {
-        musicGainNode.gain.value = e.target.value / 100 * 0.3;
-    });
-});
 
 // Player class
 class Player {
@@ -430,13 +481,62 @@ class Player {
         this.barkCooldown = 0;
         this.sniffMode = false;
         this.sniffRadius = 100;
+        this.isNapping = false;
+        this.napTimer = 0;
         
         // Visual effects
         this.transformParticles = [];
         this.barkWaves = [];
+        this.sleepZ = [];
     }
     
     update(deltaTime) {
+        // Life drain for corgi (energy system)
+        if (!this.isHuman && !this.isNapping) {
+            playerLife -= 0.05; // Slow drain
+            if (this.velX !== 0) playerLife -= 0.05; // Extra drain when moving
+            if (this.sniffMode) playerLife -= 0.1; // Extra drain when sniffing
+            
+            // Die if energy reaches 0
+            if (playerLife <= 0) {
+                showMessage('You collapsed from exhaustion!', 120);
+                resetLevel();
+                return;
+            }
+        }
+        
+        // Handle napping
+        if (this.isNapping) {
+            this.velX *= 0.9;
+            this.napTimer--;
+            playerLife = Math.min(maxLife, playerLife + 0.5); // Restore life
+            
+            // Create sleep Z's
+            if (Math.random() < 0.1) {
+                this.sleepZ.push({
+                    x: this.x + this.width/2,
+                    y: this.y,
+                    size: 10 + Math.random() * 10,
+                    life: 60
+                });
+            }
+            
+            if (this.napTimer <= 0 || playerLife >= 80) {
+                this.isNapping = false;
+                showMessage('Refreshed!', 60);
+            }
+            
+            // Update sleep effects
+            this.sleepZ = this.sleepZ.filter(z => {
+                z.y -= 0.5;
+                z.x += Math.sin(z.life * 0.1) * 0.5;
+                z.life--;
+                return z.life > 0;
+            });
+            
+            return; // Skip other input during nap
+        }
+        
         // Handle input
         if (keys['arrowleft'] || keys['a']) {
             this.velX = this.isHuman ? -MOVE_SPEED : -CORGI_MOVE_SPEED;
@@ -473,6 +573,14 @@ class Player {
             
             // Sniff
             this.sniffMode = keys['s'];
+            
+            // Voluntary nap
+            if (keys['n'] && this.onGround && !this.isNapping) {
+                this.startNap();
+            }
+        } else {
+            // Can't use corgi abilities as human
+            this.sniffMode = false;
         }
         
         // Apply physics
@@ -499,6 +607,8 @@ class Player {
         if (this.isHuman) {
             this.width = 40;
             this.height = 60;
+            // Restore life when transforming to human
+            playerLife = maxLife;
         } else {
             this.width = 50;
             this.height = 35;
@@ -522,6 +632,13 @@ class Player {
         
         // Update UI
         document.getElementById('currentForm').textContent = this.isHuman ? 'Human' : 'Corgi';
+    }
+    
+    startNap() {
+        this.isNapping = true;
+        this.napTimer = 180; // 3 seconds at 60fps
+        this.velX = 0;
+        this.sleepZ = [];
     }
     
     bark() {
@@ -593,16 +710,37 @@ class Player {
         } else {
             // Corgi form
             ctx.fillStyle = '#ff8c42';
-            ctx.fillRect(this.x + 5, this.y + 10, 35, 20); // Body
-            ctx.fillRect(this.x + 35, this.y + 5, 15, 15); // Head (moved to right side)
             
-            // Legs (stubby!)
-            const legOffset = Math.sin(this.animationFrame * 0.8) * 2;
-            ctx.fillStyle = '#d2691e';
-            ctx.fillRect(this.x + 8, this.y + 25, 6, 10 + legOffset);
-            ctx.fillRect(this.x + 16, this.y + 25, 6, 10 - legOffset);
-            ctx.fillRect(this.x + 24, this.y + 25, 6, 10 + legOffset);
-            ctx.fillRect(this.x + 32, this.y + 25, 6, 10 - legOffset);
+            if (this.isNapping) {
+                // Curled up sleeping position
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                ctx.rotate(-Math.PI/6);
+                ctx.fillRect(-20, -10, 35, 20); // Body
+                ctx.fillRect(10, -15, 15, 15); // Head
+                ctx.restore();
+                
+                // Closed eyes
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x + 37, this.y + 8);
+                ctx.lineTo(this.x + 41, this.y + 8);
+                ctx.moveTo(this.x + 44, this.y + 8);
+                ctx.lineTo(this.x + 48, this.y + 8);
+                ctx.stroke();
+            } else {
+                ctx.fillRect(this.x + 5, this.y + 10, 35, 20); // Body
+                ctx.fillRect(this.x + 35, this.y + 5, 15, 15); // Head (moved to right side)
+                
+                // Legs (stubby!)
+                const legOffset = Math.sin(this.animationFrame * 0.8) * 2;
+                ctx.fillStyle = '#d2691e';
+                ctx.fillRect(this.x + 8, this.y + 25, 6, 10 + legOffset);
+                ctx.fillRect(this.x + 16, this.y + 25, 6, 10 - legOffset);
+                ctx.fillRect(this.x + 24, this.y + 25, 6, 10 + legOffset);
+                ctx.fillRect(this.x + 32, this.y + 25, 6, 10 - legOffset);
+            }
             
             // Tail (moved to left side)
             ctx.fillStyle = '#ff8c42';
@@ -649,6 +787,16 @@ class Player {
             ctx.stroke();
             ctx.setLineDash([]);
         }
+        
+        // Sleep Z's
+        this.sleepZ.forEach(z => {
+            ctx.save();
+            ctx.globalAlpha = z.life / 60;
+            ctx.font = `${z.size}px Arial`;
+            ctx.fillStyle = '#4169e1';
+            ctx.fillText('Z', z.x, z.y);
+            ctx.restore();
+        });
     }
 }
 
@@ -751,14 +899,27 @@ class InteractiveObject {
             ctx.fillRect(this.x, this.y, this.width, this.height);
         } else if (this.type === 'pen') {
             // Sheep pen goal area
+            // Floor/base
+            ctx.fillStyle = 'rgba(139, 69, 19, 0.3)';
+            ctx.fillRect(this.x, this.y + this.height - 20, this.width, 20);
+            
+            // Fence
             ctx.strokeStyle = '#8b4513';
             ctx.lineWidth = 4;
             ctx.strokeRect(this.x, this.y, this.width, this.height);
             
-            // Gate
+            // Gate posts
             ctx.fillStyle = '#654321';
             ctx.fillRect(this.x - 5, this.y, 10, this.height);
             ctx.fillRect(this.x + this.width - 5, this.y, 10, this.height);
+            
+            // Back fence (to show depth)
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y + 20);
+            ctx.lineTo(this.x + this.width, this.y + 20);
+            ctx.stroke();
             
             // Sign
             ctx.fillStyle = '#fff';
@@ -1030,10 +1191,10 @@ class Sheep {
     }
     
     update(player, barkWaves) {
-        // Check if sheep is in pen
+        // Check if sheep is in pen (check from sheep's feet position)
         const pen = level.objects.find(obj => obj.type === 'pen');
         if (pen && this.x > pen.x && this.x + this.width < pen.x + pen.width &&
-            this.y > pen.y && this.y + this.height < pen.y + pen.height) {
+            this.y + this.height > pen.y + 20 && this.y + this.height < pen.y + pen.height + 20) {
             this.isInPen = true;
             this.state = 'grazing';
             this.velX = 0;
@@ -1382,9 +1543,19 @@ function checkFarmerCollisions(farmer) {
                 player.velX = farmer.x > player.x ? -5 : 5;
             }
         } else {
-            // Corgi dies if touched by farmer
-            showMessage('The farmer caught you!', 120);
-            resetLevel();
+            // Corgi takes damage from farmer
+            playerLife -= 20;
+            showMessage('Ouch! The farmer hit you!', 90);
+            
+            // Knockback
+            player.velX = farmer.x > player.x ? -8 : 8;
+            player.velY = -5;
+            
+            // Check if dead
+            if (playerLife <= 0) {
+                showMessage('The farmer knocked you out!', 120);
+                resetLevel();
+            }
         }
     }
 }
@@ -1580,7 +1751,8 @@ function gameLoop(timestamp) {
     updateMessage();
     drawMessage();
     
-    // Draw treat counter
+    // Draw UI elements
+    drawLifeBar();
     drawTreatCounter();
     
     // Continue loop
@@ -1614,6 +1786,7 @@ function startGame() {
 
 function resetLevel() {
     player = new Player(level.startX, level.startY);
+    playerLife = maxLife; // Reset life
     
     // Clear any stuck keys to prevent movement
     for (let key in keys) {
