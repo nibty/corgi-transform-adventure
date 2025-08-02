@@ -4,6 +4,8 @@ A fun 2D side-scrolling platformer where you can transform between human and cor
 
 This game was created using [Claude Code](https://claude.ai/code) as an experiment to see how effectively an AI assistant could develop a complete web-based game from scratch. The entire game was built through conversational programming, demonstrating the potential of AI-assisted game development.
 
+**This is a beginner-friendly project!** We actively encourage contributions from developers of all skill levels. Whether you want to add new levels, create enemies, improve the story, or just fix a typo - your contributions are welcome! Check out our [Development Guide](DEVELOPMENT.md) to get started.
+
 ## How to Play
 
 1. Open `index.html` in a web browser
@@ -68,6 +70,16 @@ This game was created using [Claude Code](https://claude.ai/code) as an experime
 - Time your barks to keep multiple pigeons airborne
 
 Enjoy your adventure!
+
+## Development
+
+Want to add new features or improve the game? Check out our [Development Guide](DEVELOPMENT.md) for detailed instructions on:
+- Installing Claude Code
+- Getting started with Git
+- Working effectively with Claude to make changes
+- Testing and committing your improvements
+
+Perfect for beginners and experienced developers alike!
 
 ## License
 
