@@ -65,25 +65,19 @@ Claude Code is an AI-powered coding assistant that can help you write, debug, an
 
 **Important:** All commands below should be typed in your terminal window!
 
-1. **On Mac:**
+1. **On Mac or Linux:**
    - First, open Terminal (see instructions above)
    - Type this command and press Enter:
    ```bash
-   brew install claude-code
+   curl -fsSL https://claude.ai/install.sh | bash
    ```
    - Wait for it to finish installing
+   - You might see some text scrolling by - that's normal!
    
 2. **On Windows:**
    - Download the installer from [claude.ai/code](https://claude.ai/code)
    - Run the installer and follow the prompts
    - After installation, open Command Prompt to continue
-   
-3. **On Linux:**
-   - Open Terminal (see instructions above)
-   - Type this command and press Enter:
-   ```bash
-   curl -fsSL https://claude.ai/install.sh | sh
-   ```
 
 ### Step 2: Set Up Your API Key
 
