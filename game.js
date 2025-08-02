@@ -170,65 +170,187 @@ function createJumpSound() {
     oscillator.stop(audioContext.currentTime + duration);
 }
 
-// Background music - mystery theme inspired
+// Background music - different themes for each level
 let musicOscillators = [];
 let musicStartTime = 0;
 let isMusicPlaying = false;
+let currentMusicLevel = -1;
 
-function createBackgroundMusic() {
-    if (isMusicPlaying) return;
+// Music patterns for different levels
+const levelMusic = {
+    // Level 1 - Tutorial: Light and playful
+    1: {
+        bassPattern: [
+            {note: 130.81, duration: 0.5, time: 0},    // C
+            {note: 164.81, duration: 0.5, time: 0.5},  // E
+            {note: 196, duration: 0.5, time: 1},       // G
+            {note: 164.81, duration: 0.5, time: 1.5},  // E
+            {note: 130.81, duration: 0.5, time: 2},    // C
+            {note: 196, duration: 0.5, time: 2.5},     // G
+            {note: 164.81, duration: 0.5, time: 3},    // E
+            {note: 130.81, duration: 0.5, time: 3.5}   // C
+        ],
+        melodyPattern: [
+            {note: 523.25, duration: 0.25, time: 0},    // High C
+            {note: 659.25, duration: 0.25, time: 0.25}, // E
+            {note: 783.99, duration: 0.25, time: 0.5},  // G
+            {note: 659.25, duration: 0.25, time: 0.75}, // E
+            {note: 523.25, duration: 0.5, time: 1},     // C
+            {note: 392, duration: 0.5, time: 1.5},      // G
+            {note: 329.63, duration: 0.5, time: 2},     // E
+            {note: 392, duration: 0.5, time: 2.5},      // G
+            {note: 523.25, duration: 0.5, time: 3}      // C
+        ],
+        tempo: 1
+    },
     
+    // Level 2 - Backyard: Adventurous
+    2: {
+        bassPattern: [
+            {note: 146.83, duration: 0.5, time: 0},    // D
+            {note: 146.83, duration: 0.5, time: 0.5},
+            {note: 174.61, duration: 0.5, time: 1},    // F
+            {note: 196, duration: 0.5, time: 1.5},     // G
+            {note: 146.83, duration: 0.5, time: 2},    // D
+            {note: 130.81, duration: 0.5, time: 2.5},  // C
+            {note: 110, duration: 0.5, time: 3},       // A
+            {note: 146.83, duration: 0.5, time: 3.5}   // D
+        ],
+        melodyPattern: [
+            {note: 293.66, duration: 0.5, time: 0},     // D
+            {note: 349.23, duration: 0.25, time: 0.5},  // F
+            {note: 392, duration: 0.25, time: 0.75},    // G
+            {note: 440, duration: 0.5, time: 1},        // A
+            {note: 392, duration: 0.5, time: 1.5},      // G
+            {note: 349.23, duration: 0.5, time: 2},     // F
+            {note: 293.66, duration: 0.5, time: 2.5},   // D
+            {note: 261.63, duration: 0.5, time: 3},     // C
+            {note: 293.66, duration: 0.5, time: 3.5}    // D
+        ],
+        tempo: 1.1
+    },
+    
+    // Level 3 - Boss (Sheep): Heroic/Epic
+    3: {
+        bassPattern: [
+            {note: 110, duration: 0.5, time: 0},       // A
+            {note: 110, duration: 0.5, time: 0.5},
+            {note: 130.81, duration: 0.5, time: 1},    // C
+            {note: 146.83, duration: 0.5, time: 1.5},  // D
+            {note: 164.81, duration: 0.5, time: 2},    // E
+            {note: 146.83, duration: 0.5, time: 2.5},  // D
+            {note: 130.81, duration: 0.5, time: 3},    // C
+            {note: 110, duration: 0.5, time: 3.5}      // A
+        ],
+        melodyPattern: [
+            {note: 440, duration: 0.75, time: 0},       // A
+            {note: 523.25, duration: 0.25, time: 0.75}, // C
+            {note: 659.25, duration: 0.5, time: 1},     // E
+            {note: 587.33, duration: 0.5, time: 1.5},   // D
+            {note: 523.25, duration: 0.5, time: 2},     // C
+            {note: 440, duration: 0.5, time: 2.5},      // A
+            {note: 392, duration: 0.5, time: 3},        // G
+            {note: 440, duration: 0.5, time: 3.5}       // A
+        ],
+        tempo: 0.9
+    },
+    
+    // Level 4 - Farmer Chase: Tense/Danger
+    4: {
+        bassPattern: [
+            {note: 82.41, duration: 0.25, time: 0},     // Low E
+            {note: 82.41, duration: 0.25, time: 0.25},
+            {note: 87.31, duration: 0.25, time: 0.5},   // F
+            {note: 82.41, duration: 0.25, time: 0.75},  // E
+            {note: 98, duration: 0.5, time: 1},         // G
+            {note: 92.5, duration: 0.5, time: 1.5},     // F#
+            {note: 87.31, duration: 0.5, time: 2},      // F
+            {note: 82.41, duration: 1, time: 2.5}       // E
+        ],
+        melodyPattern: [
+            {note: 329.63, duration: 0.125, time: 0},   // E
+            {note: 349.23, duration: 0.125, time: 0.125}, // F
+            {note: 329.63, duration: 0.25, time: 0.25}, // E
+            {note: 392, duration: 0.25, time: 0.5},     // G
+            {note: 369.99, duration: 0.25, time: 0.75}, // F#
+            {note: 349.23, duration: 0.5, time: 1},     // F
+            {note: 329.63, duration: 0.5, time: 1.5},   // E
+            {note: 311.13, duration: 0.5, time: 2},     // Eb
+            {note: 329.63, duration: 1, time: 2.5}      // E
+        ],
+        tempo: 1.2
+    },
+    
+    // Level 5 - Pigeon Chaos: Frantic/Comedic
+    5: {
+        bassPattern: [
+            {note: 130.81, duration: 0.25, time: 0},    // C
+            {note: 130.81, duration: 0.25, time: 0.25},
+            {note: 196, duration: 0.25, time: 0.5},     // G
+            {note: 130.81, duration: 0.25, time: 0.75}, // C
+            {note: 174.61, duration: 0.25, time: 1},    // F
+            {note: 130.81, duration: 0.25, time: 1.25}, // C
+            {note: 196, duration: 0.25, time: 1.5},     // G
+            {note: 130.81, duration: 0.25, time: 1.75}, // C
+        ],
+        melodyPattern: [
+            {note: 659.25, duration: 0.125, time: 0},   // E
+            {note: 783.99, duration: 0.125, time: 0.125}, // G
+            {note: 659.25, duration: 0.125, time: 0.25}, // E
+            {note: 523.25, duration: 0.125, time: 0.375}, // C
+            {note: 783.99, duration: 0.125, time: 0.5},   // G
+            {note: 987.77, duration: 0.125, time: 0.625}, // B
+            {note: 783.99, duration: 0.125, time: 0.75},  // G
+            {note: 659.25, duration: 0.125, time: 0.875}, // E
+            {note: 523.25, duration: 0.25, time: 1},      // C
+            {note: 587.33, duration: 0.25, time: 1.25},   // D
+            {note: 659.25, duration: 0.25, time: 1.5},    // E
+            {note: 783.99, duration: 0.25, time: 1.75}    // G
+        ],
+        tempo: 1.5
+    }
+};
+
+function createBackgroundMusic(level = currentLevel) {
+    // Stop current music if playing
+    if (isMusicPlaying) {
+        stopBackgroundMusic();
+    }
+    
+    // Don't restart if same level
+    if (currentMusicLevel === level) {
+        isMusicPlaying = true;
+        return;
+    }
+    
+    currentMusicLevel = level;
     isMusicPlaying = true;
     musicStartTime = audioContext.currentTime;
     
-    // Mystery-style bassline
-    const bassPattern = [
-        {note: 110, duration: 0.5, time: 0},
-        {note: 110, duration: 0.5, time: 0.5},
-        {note: 123.47, duration: 0.5, time: 1},
-        {note: 110, duration: 0.5, time: 1.5},
-        {note: 146.83, duration: 0.5, time: 2},
-        {note: 130.81, duration: 0.5, time: 2.5},
-        {note: 123.47, duration: 0.5, time: 3},
-        {note: 110, duration: 0.5, time: 3.5}
-    ];
-    
-    // Mystery-style melody
-    const melodyPattern = [
-        {note: 329.63, duration: 0.25, time: 0},
-        {note: 349.23, duration: 0.25, time: 0.25},
-        {note: 392, duration: 0.25, time: 0.5},
-        {note: 349.23, duration: 0.25, time: 0.75},
-        {note: 329.63, duration: 0.5, time: 1},
-        {note: 293.66, duration: 0.5, time: 1.5},
-        {note: 261.63, duration: 0.25, time: 2},
-        {note: 293.66, duration: 0.25, time: 2.25},
-        {note: 329.63, duration: 0.5, time: 2.5},
-        {note: 293.66, duration: 0.5, time: 3},
-        {note: 261.63, duration: 0.5, time: 3.5}
-    ];
+    const musicData = levelMusic[level] || levelMusic[1]; // Default to level 1 music
+    const { bassPattern, melodyPattern, tempo } = musicData;
     
     function playPattern() {
-        const loopDuration = 4; // 4 beats
+        const loopDuration = 4 / tempo; // Adjust tempo
         
         // Bass
         bassPattern.forEach(note => {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
             
-            osc.type = 'triangle';
+            osc.type = level === 4 ? 'sawtooth' : 'triangle'; // Harsher sound for danger level
             osc.frequency.value = note.note;
             
-            gain.gain.setValueAtTime(0, musicStartTime + note.time);
-            gain.gain.linearRampToValueAtTime(0.1, musicStartTime + note.time + 0.01);
-            gain.gain.setValueAtTime(0.1, musicStartTime + note.time + note.duration - 0.01);
-            gain.gain.linearRampToValueAtTime(0, musicStartTime + note.time + note.duration);
+            gain.gain.setValueAtTime(0, musicStartTime + note.time / tempo);
+            gain.gain.linearRampToValueAtTime(0.1, musicStartTime + note.time / tempo + 0.01);
+            gain.gain.setValueAtTime(0.1, musicStartTime + (note.time + note.duration - 0.01) / tempo);
+            gain.gain.linearRampToValueAtTime(0, musicStartTime + (note.time + note.duration) / tempo);
             
             osc.connect(gain);
             gain.connect(musicGainNode);
             
-            osc.start(musicStartTime + note.time);
-            osc.stop(musicStartTime + note.time + note.duration);
+            osc.start(musicStartTime + note.time / tempo);
+            osc.stop(musicStartTime + (note.time + note.duration) / tempo);
             
             musicOscillators.push(osc);
         });
@@ -238,19 +360,19 @@ function createBackgroundMusic() {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
             
-            osc.type = 'sine';
+            osc.type = level === 3 ? 'square' : 'sine'; // Heroic sound for boss
             osc.frequency.value = note.note;
             
-            gain.gain.setValueAtTime(0, musicStartTime + note.time);
-            gain.gain.linearRampToValueAtTime(0.08, musicStartTime + note.time + 0.01);
-            gain.gain.setValueAtTime(0.08, musicStartTime + note.time + note.duration - 0.01);
-            gain.gain.linearRampToValueAtTime(0, musicStartTime + note.time + note.duration);
+            gain.gain.setValueAtTime(0, musicStartTime + note.time / tempo);
+            gain.gain.linearRampToValueAtTime(0.08, musicStartTime + note.time / tempo + 0.01);
+            gain.gain.setValueAtTime(0.08, musicStartTime + (note.time + note.duration - 0.01) / tempo);
+            gain.gain.linearRampToValueAtTime(0, musicStartTime + (note.time + note.duration) / tempo);
             
             osc.connect(gain);
             gain.connect(musicGainNode);
             
-            osc.start(musicStartTime + note.time);
-            osc.stop(musicStartTime + note.time + note.duration);
+            osc.start(musicStartTime + note.time / tempo);
+            osc.stop(musicStartTime + (note.time + note.duration) / tempo);
             
             musicOscillators.push(osc);
         });
@@ -267,6 +389,7 @@ function createBackgroundMusic() {
 
 function stopBackgroundMusic() {
     isMusicPlaying = false;
+    currentMusicLevel = -1; // Reset so new music plays
     musicOscillators.forEach(osc => {
         try {
             osc.stop();
@@ -284,6 +407,8 @@ let treatCount = 0;
 let lastTransformTime = 0;
 let playerLife = 100;
 let maxLife = 100;
+let maxPlayerLife = 100;
+let particles = [];
 
 // Message system
 let gameMessage = '';
@@ -443,12 +568,16 @@ window.addEventListener('keydown', (e) => {
             currentLevel = levelNum;
             level = new Level(levels[currentLevel - 1]);
             player = new Player(level.startX, level.startY);
+            playerLife = maxLife; // Reset life
             document.getElementById('currentLevel').textContent = currentLevel;
             
             // Clear keys to prevent movement
             for (let key in keys) {
                 keys[key] = false;
             }
+            
+            // Change music for new level
+            createBackgroundMusic(currentLevel);
             
             showMessage(`Jumped to Level ${levelNum}`, 90);
         }
@@ -601,6 +730,15 @@ class Player {
     }
     
     transform() {
+        // Check if we're stuck as corgi in farmer level
+        if (currentLevel === 4 && !this.isHuman) {
+            const melonsLeft = level.objects.filter(obj => obj.type === 'melon').length;
+            if (melonsLeft > 0) {
+                showMessage(`Can't transform! Eat all ${melonsLeft} melon${melonsLeft > 1 ? 's' : ''} first!`, 120);
+                return;
+            }
+        }
+        
         this.isHuman = !this.isHuman;
         
         // Adjust dimensions
@@ -897,6 +1035,33 @@ class InteractiveObject {
         } else if (this.type === 'door') {
             ctx.fillStyle = this.activated ? '#90ee90' : '#dc143c';
             ctx.fillRect(this.x, this.y, this.width, this.height);
+        } else if (this.type === 'melon') {
+            // Draw a watermelon
+            ctx.save();
+            
+            // Main melon body
+            ctx.fillStyle = '#2e7d32';
+            ctx.beginPath();
+            ctx.ellipse(this.x + 20, this.y + 20, 20, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Dark stripes
+            ctx.strokeStyle = '#1b5e20';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(this.x + 10 + i * 8, this.y + 5);
+                ctx.lineTo(this.x + 10 + i * 8, this.y + 35);
+                ctx.stroke();
+            }
+            
+            // Highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(this.x + 15, this.y + 15, 8, 6, -Math.PI/4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
         } else if (this.type === 'pen') {
             // Sheep pen goal area
             // Floor/base
@@ -1164,6 +1329,242 @@ class Farmer {
     }
 }
 
+// Pigeon class
+class Pigeon {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.startY = y;
+        this.width = 25;
+        this.height = 20;
+        this.velX = 0;
+        this.velY = 0;
+        this.facing = Math.random() > 0.5 ? 1 : -1;
+        
+        // Flying state
+        this.isFlying = false;
+        this.flightHeight = 150 + Math.random() * 100; // Random flight height
+        this.targetY = y;
+        this.landingTimer = 0;
+        this.takeoffSpeed = 8;
+        
+        // Animation
+        this.wingFlap = 0;
+        this.bobAmount = 0;
+        
+        // Pigeon behavior
+        this.walkSpeed = 0.5 + Math.random() * 0.5;
+        this.panicTimer = 0;
+        this.hasLeftScreen = false;
+    }
+    
+    update(player, pigeons) {
+        if (this.hasLeftScreen) return;
+        
+        // Check if all pigeons are flying
+        const allFlying = pigeons.every(p => p.isFlying || p.hasLeftScreen);
+        
+        if (allFlying && this.isFlying) {
+            // Fly away off screen
+            this.velX = 3 * this.facing;
+            this.velY = -1;
+            this.x += this.velX;
+            this.y += this.velY;
+            
+            if (this.x < -50 || this.x > canvas.width + 50) {
+                this.hasLeftScreen = true;
+            }
+            return;
+        }
+        
+        // React to bark waves
+        player.barkWaves.forEach(wave => {
+            const dist = Math.hypot(wave.x - (this.x + this.width/2), wave.y - (this.y + this.height/2));
+            if (dist < wave.radius && wave.radius < 120 && !this.isFlying) {
+                this.isFlying = true;
+                this.panicTimer = 180; // 3 seconds of flight
+                this.velY = -this.takeoffSpeed;
+                this.targetY = this.y - this.flightHeight;
+                
+                // Panic direction away from bark
+                this.facing = wave.x < this.x ? 1 : -1;
+                this.velX = this.facing * 2;
+            }
+        });
+        
+        if (this.isFlying) {
+            // Flying behavior
+            this.panicTimer--;
+            
+            // Wing flapping
+            this.wingFlap += 0.3;
+            
+            // Vertical movement
+            if (this.y > this.targetY) {
+                this.velY = Math.max(this.velY - 0.3, -4);
+            } else {
+                this.velY = Math.min(this.velY + 0.1, 0);
+                
+                // Hover at target height
+                if (Math.abs(this.y - this.targetY) < 10) {
+                    this.velY = Math.sin(Date.now() * 0.005) * 0.5;
+                }
+            }
+            
+            // Horizontal movement (slow down over time)
+            this.velX *= 0.98;
+            
+            // Try to land when panic wears off
+            if (this.panicTimer <= 0 && !allFlying) {
+                this.isFlying = false;
+                this.targetY = this.startY;
+                this.landingTimer = 60;
+            }
+        } else {
+            // Ground behavior
+            if (this.landingTimer > 0) {
+                // Landing
+                this.landingTimer--;
+                this.velY = Math.min(this.velY + 0.5, 5);
+                
+                if (this.y >= this.startY) {
+                    this.y = this.startY;
+                    this.velY = 0;
+                    this.landingTimer = 0;
+                }
+            } else {
+                // Walking/pecking
+                this.y = this.startY;
+                
+                // Random walk
+                if (Math.random() < 0.02) {
+                    this.facing *= -1;
+                }
+                
+                this.velX = this.walkSpeed * this.facing;
+                
+                // Pecking animation
+                this.bobAmount = Math.abs(Math.sin(Date.now() * 0.01)) * 3;
+            }
+            
+            // Wing rest position
+            this.wingFlap = Math.sin(Date.now() * 0.002) * 0.1;
+        }
+        
+        // Apply movement
+        this.x += this.velX;
+        this.y += this.velY;
+        
+        // Keep in bounds when walking
+        if (!this.isFlying && !this.hasLeftScreen) {
+            if (this.x < 0) {
+                this.x = 0;
+                this.facing = 1;
+            }
+            if (this.x + this.width > canvas.width) {
+                this.x = canvas.width - this.width;
+                this.facing = -1;
+            }
+        }
+    }
+    
+    draw() {
+        if (this.hasLeftScreen) return;
+        
+        ctx.save();
+        
+        // Flip sprite
+        if (this.facing === -1) {
+            ctx.translate(this.x + this.width/2, 0);
+            ctx.scale(-1, 1);
+            ctx.translate(-this.x - this.width/2, 0);
+        }
+        
+        // Body
+        ctx.fillStyle = '#708090';
+        ctx.beginPath();
+        ctx.ellipse(this.x + 12, this.y + 10 + this.bobAmount, 12, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Head
+        ctx.fillStyle = '#696969';
+        ctx.beginPath();
+        ctx.arc(this.x + 20, this.y + 5 + this.bobAmount, 5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Beak
+        ctx.fillStyle = '#ff6347';
+        ctx.beginPath();
+        ctx.moveTo(this.x + 25, this.y + 5 + this.bobAmount);
+        ctx.lineTo(this.x + 28, this.y + 6 + this.bobAmount);
+        ctx.lineTo(this.x + 25, this.y + 7 + this.bobAmount);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Eye
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(this.x + 21, this.y + 4 + this.bobAmount, 1, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Wings
+        const wingAngle = this.isFlying ? Math.sin(this.wingFlap) * 0.8 : this.wingFlap;
+        ctx.fillStyle = '#5a6a7a';
+        
+        // Left wing
+        ctx.save();
+        ctx.translate(this.x + 10, this.y + 10 + this.bobAmount);
+        ctx.rotate(-wingAngle);
+        ctx.fillRect(-8, -3, 12, 6);
+        ctx.restore();
+        
+        // Right wing
+        ctx.save();
+        ctx.translate(this.x + 14, this.y + 10 + this.bobAmount);
+        ctx.rotate(wingAngle);
+        ctx.fillRect(-4, -3, 12, 6);
+        ctx.restore();
+        
+        // Tail
+        ctx.fillStyle = '#4a5a6a';
+        ctx.beginPath();
+        ctx.moveTo(this.x + 2, this.y + 12 + this.bobAmount);
+        ctx.lineTo(this.x - 2, this.y + 8 + this.bobAmount);
+        ctx.lineTo(this.x, this.y + 15 + this.bobAmount);
+        ctx.lineTo(this.x + 4, this.y + 15 + this.bobAmount);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Legs (only when not flying high)
+        if (!this.isFlying || this.landingTimer > 0) {
+            ctx.strokeStyle = '#ff6347';
+            ctx.lineWidth = 1;
+            const legBend = this.isFlying ? 0 : Math.sin(Date.now() * 0.01 + this.x) * 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(this.x + 8, this.y + 16);
+            ctx.lineTo(this.x + 8, this.y + 20 + legBend);
+            ctx.moveTo(this.x + 16, this.y + 16);
+            ctx.lineTo(this.x + 16, this.y + 20 - legBend);
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+        
+        // Show panic state
+        if (this.isFlying && this.panicTimer > 120) {
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y - 10, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#000';
+            ctx.font = '12px Arial';
+            ctx.fillText('!', this.x + this.width/2 - 3, this.y - 7);
+        }
+    }
+}
+
 // Sheep boss class
 class Sheep {
     constructor(x, y) {
@@ -1361,7 +1762,9 @@ class Level {
         this.background = levelData.background || '#87ceeb';
         this.sheep = levelData.sheep || null;
         this.farmers = levelData.farmers || [];
+        this.pigeons = levelData.pigeons || [];
         this.isBossLevel = levelData.isBossLevel || false;
+        this.isPigeonLevel = levelData.isPigeonLevel || false;
     }
     
     draw() {
@@ -1394,6 +1797,9 @@ class Level {
         
         // Draw farmers
         this.farmers.forEach(farmer => farmer.draw());
+        
+        // Draw pigeons
+        this.pigeons.forEach(pigeon => pigeon.draw());
     }
 }
 
@@ -1481,7 +1887,9 @@ const levels = [
             new InteractiveObject(900, 310, 'treat'),
             new InteractiveObject(150, 360, 'treat', true), // Hidden
             new InteractiveObject(490, 260, 'treat', true), // Hidden
-            new InteractiveObject(750, 460, 'treat', true)  // Hidden
+            new InteractiveObject(750, 460, 'treat', true),  // Hidden
+            new InteractiveObject(500, 460, 'melon'), // Melon for energy
+            new InteractiveObject(150, 460, 'melon')  // Another melon
         ],
         farmers: [
             new Farmer(400, 430),
@@ -1490,6 +1898,35 @@ const levels = [
         startX: 50,
         startY: 400,
         background: '#ffd4a3'
+    },
+    // Level 5 - Pigeon Chaos
+    {
+        platforms: [
+            new Platform(0, 500, 1024, 76),
+            new Platform(200, 400, 100, 20),
+            new Platform(500, 350, 100, 20),
+            new Platform(800, 400, 100, 20)
+        ],
+        objects: [
+            new InteractiveObject(100, 460, 'treat'),
+            new InteractiveObject(250, 360, 'treat'),
+            new InteractiveObject(550, 310, 'treat'),
+            new InteractiveObject(850, 360, 'treat'),
+            new InteractiveObject(450, 460, 'treat', true), // Hidden
+            new InteractiveObject(950, 460, 'treat', true)  // Hidden
+        ],
+        pigeons: [
+            new Pigeon(150, 480),
+            new Pigeon(300, 480),
+            new Pigeon(450, 480),
+            new Pigeon(600, 480),
+            new Pigeon(750, 480),
+            new Pigeon(900, 480)
+        ],
+        startX: 50,
+        startY: 400,
+        background: '#b0c4de',
+        isPigeonLevel: true
     }
 ];
 
@@ -1668,6 +2105,40 @@ function checkCollisions() {
                     return false; // Remove treat
                 }
             }
+        } else if (obj.type === 'melon') {
+            // Melon can only be eaten by corgi
+            if (!player.isHuman &&
+                player.x < obj.x + obj.width &&
+                player.x + player.width > obj.x &&
+                player.y < obj.y + obj.height &&
+                player.y + player.height > obj.y) {
+                
+                // Restore full energy
+                playerLife = maxPlayerLife;
+                createCollectSound();
+                
+                // Check if this was the last melon in level 4
+                const melonsLeft = level.objects.filter(o => o.type === 'melon' && o !== obj).length;
+                if (currentLevel === 4 && melonsLeft === 0) {
+                    showMessage('All melons eaten! You can transform again!', 180);
+                } else {
+                    showMessage('Energy restored! The melon was delicious!', 150);
+                }
+                
+                // Visual effect
+                for (let i = 0; i < 10; i++) {
+                    particles.push({
+                        x: obj.x + 20,
+                        y: obj.y + 20,
+                        velX: (Math.random() - 0.5) * 8,
+                        velY: -Math.random() * 10,
+                        life: 60,
+                        color: '#ff69b4'
+                    });
+                }
+                
+                return false; // Remove melon
+            }
         }
         return true;
     });
@@ -1744,7 +2215,40 @@ function gameLoop(timestamp) {
         checkFarmerCollisions(farmer);
     });
     
+    // Update pigeons
+    level.pigeons.forEach(pigeon => {
+        pigeon.update(player, level.pigeons);
+    });
+    
+    // Check pigeon level completion
+    if (level.isPigeonLevel) {
+        const allPigeonsGone = level.pigeons.every(p => p.hasLeftScreen);
+        if (allPigeonsGone && !level.pigeonVictoryShown) {
+            level.pigeonVictoryShown = true;
+            showMessage('All pigeons flew away! You can proceed!', 180);
+        }
+    }
+    
     checkCollisions();
+    
+    // Update and draw particles
+    particles = particles.filter(particle => {
+        particle.x += particle.velX;
+        particle.y += particle.velY;
+        particle.velY += 0.5; // gravity
+        particle.life--;
+        
+        if (particle.life > 0) {
+            ctx.save();
+            ctx.globalAlpha = particle.life / 60;
+            ctx.fillStyle = particle.color;
+            ctx.fillRect(particle.x - 2, particle.y - 2, 4, 4);
+            ctx.restore();
+            return true;
+        }
+        return false;
+    });
+    
     player.draw();
     
     // Update and draw messages
@@ -1815,10 +2319,24 @@ function nextLevel() {
     player = new Player(level.startX, level.startY);
     document.getElementById('currentLevel').textContent = currentLevel;
     
+    // Show level-specific messages
+    if (currentLevel === 4) {
+        setTimeout(() => {
+            showMessage('Farmers are angry! Once corgi, you must eat ALL melons to transform back!', 350);
+        }, 500);
+    } else if (currentLevel === 5) {
+        setTimeout(() => {
+            showMessage('Keep all pigeons in the air by barking! Once all fly, they\'ll leave!', 300);
+        }, 500);
+    }
+    
     // Clear any stuck keys to prevent movement
     for (let key in keys) {
         keys[key] = false;
     }
+    
+    // Change music for new level
+    createBackgroundMusic(currentLevel);
     
     // Show level-specific messages
     if (level.isBossLevel) {
