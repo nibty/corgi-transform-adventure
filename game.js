@@ -1329,6 +1329,223 @@ class Farmer {
     }
 }
 
+// Policeman class
+class Policeman {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.width = 50;
+        this.height = 70;
+        this.velX = 0;
+        this.velY = 0;
+        this.speed = 2.5; // Faster than farmers
+        this.onGround = false;
+        this.facing = -1;
+        this.animationFrame = 0;
+        this.animationTimer = 0;
+        
+        // AI state
+        this.state = 'patrol'; // patrol, chase, searching
+        this.patrolStart = x;
+        this.patrolRange = 250;
+        this.stateTimer = 0;
+        this.searchTimer = 0;
+        this.lastSeenX = 0;
+        
+        // Evasion tracking
+        this.playerEvading = false;
+        this.evasionTimer = 0;
+        
+        // Visual effects
+        this.whistleTimer = 0;
+    }
+    
+    update(player) {
+        this.animationTimer++;
+        if (this.animationTimer % 8 === 0) {
+            this.animationFrame++;
+        }
+        
+        // Update evasion timer
+        if (this.playerEvading) {
+            this.evasionTimer++;
+            if (this.evasionTimer >= 180) { // 3 seconds at 60fps
+                this.playerEvading = false;
+                this.state = 'patrol';
+                showMessage('You successfully evaded arrest!', 120);
+            }
+        }
+        
+        // Distance to player
+        const distX = player.x - this.x;
+        const dist = Math.abs(distX);
+        
+        // State machine
+        switch(this.state) {
+            case 'patrol':
+                // Patrol back and forth
+                if (this.x <= this.patrolStart - this.patrolRange) {
+                    this.velX = this.speed * 0.6;
+                } else if (this.x >= this.patrolStart + this.patrolRange) {
+                    this.velX = -this.speed * 0.6;
+                } else if (this.velX === 0) {
+                    this.velX = this.speed * 0.6;
+                }
+                
+                // Start chasing if player is human and close
+                if (dist < 200 && player.isHuman) {
+                    this.state = 'chase';
+                    this.whistleTimer = 30;
+                    showMessage('Stop! You\'re under arrest for harassing farmers!', 150);
+                }
+                break;
+                
+            case 'chase':
+                // Chase the human player
+                if (player.isHuman) {
+                    this.velX = distX > 0 ? this.speed : -this.speed;
+                    this.lastSeenX = player.x;
+                    
+                    // Stop chasing if player transforms
+                    if (!player.isHuman) {
+                        this.state = 'searching';
+                        this.searchTimer = 180; // Search for 3 seconds
+                        this.playerEvading = true;
+                        this.evasionTimer = 0;
+                        showMessage('Quick! Run away for 3 seconds to evade arrest!', 120);
+                    }
+                } else {
+                    this.state = 'searching';
+                    this.searchTimer = 180;
+                }
+                break;
+                
+            case 'searching':
+                // Look around the last seen position
+                this.searchTimer--;
+                
+                // Move toward last seen position
+                const distToLastSeen = this.lastSeenX - this.x;
+                if (Math.abs(distToLastSeen) > 20) {
+                    this.velX = distToLastSeen > 0 ? this.speed * 0.5 : -this.speed * 0.5;
+                } else {
+                    // Look back and forth
+                    this.velX = Math.sin(this.searchTimer * 0.1) * this.speed * 0.3;
+                }
+                
+                // If player transforms back to human nearby, resume chase
+                if (player.isHuman && dist < 150 && this.playerEvading) {
+                    this.state = 'chase';
+                    this.playerEvading = false;
+                    this.evasionTimer = 0;
+                    showMessage('The policeman found you again!', 120);
+                }
+                
+                // Give up searching after timer expires
+                if (this.searchTimer <= 0) {
+                    this.state = 'patrol';
+                    if (this.playerEvading && this.evasionTimer < 180) {
+                        showMessage('Keep running! Don\'t transform back yet!', 120);
+                    }
+                }
+                break;
+        }
+        
+        // Update facing direction
+        if (this.velX > 0) this.facing = 1;
+        else if (this.velX < 0) this.facing = -1;
+        
+        // Apply physics
+        this.velY += GRAVITY;
+        this.x += this.velX;
+        this.y += this.velY;
+        
+        // Update whistle timer
+        this.whistleTimer = Math.max(0, this.whistleTimer - 1);
+    }
+    
+    draw() {
+        ctx.save();
+        
+        // Draw policeman
+        ctx.translate(this.x + this.width/2, this.y + this.height/2);
+        ctx.scale(this.facing, 1);
+        ctx.translate(-this.width/2, -this.height/2);
+        
+        // Police uniform (dark blue)
+        ctx.fillStyle = '#000080';
+        ctx.fillRect(10, 20, 30, 35);
+        
+        // Badge
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.arc(15, 25, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Head
+        ctx.fillStyle = '#ffdbac';
+        ctx.beginPath();
+        ctx.arc(25, 10, 10, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Police hat
+        ctx.fillStyle = '#000080';
+        ctx.fillRect(15, 0, 20, 8);
+        ctx.fillRect(13, 6, 24, 3);
+        
+        // Face
+        ctx.fillStyle = '#000';
+        ctx.fillRect(20, 8, 2, 2);
+        ctx.fillRect(28, 8, 2, 2);
+        
+        // Arms
+        const armSwing = Math.sin(this.animationFrame * 0.5) * 10;
+        ctx.fillStyle = '#000080';
+        ctx.fillRect(5, 25 + armSwing/2, 8, 20);
+        ctx.fillRect(37, 25 - armSwing/2, 8, 20);
+        
+        // Hands
+        ctx.fillStyle = '#ffdbac';
+        ctx.fillRect(5, 43 + armSwing/2, 8, 8);
+        ctx.fillRect(37, 43 - armSwing/2, 8, 8);
+        
+        // Legs
+        const legSwing = Math.sin(this.animationFrame * 0.8) * 5;
+        ctx.fillStyle = '#000080';
+        ctx.fillRect(15, 55, 10, 15 + legSwing);
+        ctx.fillRect(25, 55, 10, 15 - legSwing);
+        
+        // Whistle effect
+        if (this.whistleTimer > 0) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('TWEET!', 50, 0);
+        }
+        
+        ctx.restore();
+        
+        // Show state indicators
+        if (this.state === 'chase') {
+            ctx.fillStyle = 'red';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText('!', this.x + this.width/2 - 5, this.y - 10);
+        } else if (this.state === 'searching') {
+            ctx.fillStyle = 'yellow';
+            ctx.font = '20px Arial';
+            ctx.fillText('?', this.x + this.width/2 - 5, this.y - 10);
+        }
+        
+        // Show evasion progress
+        if (this.playerEvading) {
+            const progress = this.evasionTimer / 180;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(this.x - 10, this.y - 25, 70, 10);
+            ctx.fillStyle = progress < 1 ? '#ff0000' : '#00ff00';
+            ctx.fillRect(this.x - 8, this.y - 23, 66 * progress, 6);
+        }
+    }
+}
+
 // Pigeon class
 class Pigeon {
     constructor(x, y) {
@@ -1762,6 +1979,7 @@ class Level {
         this.background = levelData.background || '#87ceeb';
         this.sheep = levelData.sheep || null;
         this.farmers = levelData.farmers || [];
+        this.policemen = levelData.policemen || [];
         this.pigeons = levelData.pigeons || [];
         this.isBossLevel = levelData.isBossLevel || false;
         this.isPigeonLevel = levelData.isPigeonLevel || false;
@@ -1797,6 +2015,9 @@ class Level {
         
         // Draw farmers
         this.farmers.forEach(farmer => farmer.draw());
+        
+        // Draw policemen
+        this.policemen.forEach(policeman => policeman.draw());
         
         // Draw pigeons
         this.pigeons.forEach(pigeon => pigeon.draw());
@@ -1894,6 +2115,9 @@ const levels = [
         farmers: [
             new Farmer(400, 430),
             new Farmer(700, 330)
+        ],
+        policemen: [
+            new Policeman(900, 430)
         ],
         startX: 50,
         startY: 400,
@@ -1994,6 +2218,50 @@ function checkFarmerCollisions(farmer) {
                 resetLevel();
             }
         }
+    }
+}
+
+// Policeman collision detection
+function checkPolicemanCollisions(policeman) {
+    // Reset policeman ground state
+    policeman.onGround = false;
+    
+    // Check policeman platform collisions
+    level.platforms.forEach(platform => {
+        if (policeman.x < platform.x + platform.width &&
+            policeman.x + policeman.width > platform.x &&
+            policeman.y < platform.y + platform.height &&
+            policeman.y + policeman.height > platform.y) {
+            
+            // Landing on top
+            if (policeman.velY > 0 && policeman.y < platform.y) {
+                policeman.y = platform.y - policeman.height;
+                policeman.velY = 0;
+                policeman.onGround = true;
+            }
+        }
+    });
+    
+    // Keep policeman in bounds
+    if (policeman.x < 0) {
+        policeman.x = 0;
+        policeman.velX *= -1;
+    }
+    if (policeman.x + policeman.width > canvas.width) {
+        policeman.x = canvas.width - policeman.width;
+        policeman.velX *= -1;
+    }
+    
+    // Check collision with player (only arrests humans)
+    if (player.isHuman &&
+        player.x < policeman.x + policeman.width &&
+        player.x + player.width > policeman.x &&
+        player.y < policeman.y + policeman.height &&
+        player.y + player.height > policeman.y &&
+        policeman.state === 'chase') {
+        
+        showMessage('You\'ve been arrested!', 120);
+        resetLevel();
     }
 }
 
@@ -2215,6 +2483,12 @@ function gameLoop(timestamp) {
         checkFarmerCollisions(farmer);
     });
     
+    // Update policemen
+    level.policemen.forEach(policeman => {
+        policeman.update(player);
+        checkPolicemanCollisions(policeman);
+    });
+    
     // Update pigeons
     level.pigeons.forEach(pigeon => {
         pigeon.update(player, level.pigeons);
@@ -2306,6 +2580,11 @@ function resetLevel() {
     if (levels[currentLevel - 1].farmers) {
         level.farmers = levels[currentLevel - 1].farmers.map(f => new Farmer(f.x, f.y));
     }
+    
+    // Reset policemen
+    if (levels[currentLevel - 1].policemen) {
+        level.policemen = levels[currentLevel - 1].policemen.map(p => new Policeman(p.x, p.y));
+    }
 }
 
 function nextLevel() {
@@ -2322,7 +2601,7 @@ function nextLevel() {
     // Show level-specific messages
     if (currentLevel === 4) {
         setTimeout(() => {
-            showMessage('Farmers are angry! Once corgi, you must eat ALL melons to transform back!', 350);
+            showMessage('Farmers are angry! Police will arrest humans! Transform to corgi and run 3 seconds to evade!', 400);
         }, 500);
     } else if (currentLevel === 5) {
         setTimeout(() => {
