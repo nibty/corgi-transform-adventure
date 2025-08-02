@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corgi Transform Adventure</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #87CEEB;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        
+        #gameUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        
+        .ui-element {
+            display: inline-block;
+            margin-right: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+        
+        #startScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        #startScreen button {
+            font-size: 24px;
+            padding: 15px 30px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        #startScreen button:hover {
+            transform: scale(1.1);
+            background: #ff5252;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1024" height="576"></canvas>
+        <div id="gameUI">
+            <div class="ui-element">Form: <span id="currentForm">Human</span></div>
+            <div class="ui-element">Level: <span id="currentLevel">1</span></div>
+            <div class="ui-element">Treats: <span id="treatCount">0</span></div>
+            <div class="ui-element" style="float: right; margin-right: 0;">
+                🎵 <input type="range" id="volumeSlider" min="0" max="100" value="30" style="width: 80px; vertical-align: middle; pointer-events: auto;">
+            </div>
+        </div>
+        <div id="startScreen">
+            <h1>Corgi Transform Adventure</h1>
+            <button onclick="startGame()">Start Game</button>
+            <div class="controls">
+                <p><strong>Controls:</strong></p>
+                <p>Arrow Keys / A,D: Move</p>
+                <p>Space / W: Jump</p>
+                <p>T: Transform</p>
+                <p>B: Bark (Corgi only)</p>
+                <p>S: Sniff (Corgi only)</p>
+                <p>Space / E: Attack (Human only)</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
