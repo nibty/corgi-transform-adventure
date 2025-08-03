@@ -308,6 +308,62 @@ const levelMusic = {
             {note: 783.99, duration: 0.25, time: 1.75}    // G
         ],
         tempo: 1.5
+    },
+    // Level 6 - Policeman Chase: Intense/Pursuit
+    6: {
+        bassPattern: [
+            {note: 146.83, duration: 0.125, time: 0},    // D
+            {note: 146.83, duration: 0.125, time: 0.125},
+            {note: 146.83, duration: 0.125, time: 0.25},
+            {note: 146.83, duration: 0.125, time: 0.375},
+            {note: 174.61, duration: 0.125, time: 0.5},  // F
+            {note: 174.61, duration: 0.125, time: 0.625},
+            {note: 130.81, duration: 0.125, time: 0.75}, // C
+            {note: 130.81, duration: 0.125, time: 0.875},
+            {note: 146.83, duration: 0.125, time: 1},    // D
+            {note: 146.83, duration: 0.125, time: 1.125},
+            {note: 146.83, duration: 0.125, time: 1.25},
+            {note: 146.83, duration: 0.125, time: 1.375},
+            {note: 220, duration: 0.125, time: 1.5},     // A
+            {note: 220, duration: 0.125, time: 1.625},
+            {note: 196, duration: 0.125, time: 1.75},    // G
+            {note: 196, duration: 0.125, time: 1.875}
+        ],
+        melodyPattern: [
+            {note: 587.33, duration: 0.125, time: 0},    // D
+            {note: 698.46, duration: 0.125, time: 0.125}, // F
+            {note: 587.33, duration: 0.125, time: 0.25}, // D
+            {note: 523.25, duration: 0.125, time: 0.375}, // C
+            {note: 587.33, duration: 0.25, time: 0.5},   // D
+            {note: 698.46, duration: 0.25, time: 0.75},  // F
+            {note: 880, duration: 0.125, time: 1},       // A
+            {note: 783.99, duration: 0.125, time: 1.125}, // G
+            {note: 698.46, duration: 0.125, time: 1.25}, // F
+            {note: 587.33, duration: 0.125, time: 1.375}, // D
+            {note: 523.25, duration: 0.25, time: 1.5},   // C
+            {note: 587.33, duration: 0.25, time: 1.75}   // D
+        ],
+        tempo: 1.8
+    },
+    // Level 7 - Underground Maze: Mysterious/Dark
+    7: {
+        bassPattern: [
+            {note: 110, duration: 0.5, time: 0},      // A low
+            {note: 123.47, duration: 0.5, time: 0.5}, // B low
+            {note: 110, duration: 0.5, time: 1},      // A low
+            {note: 98, duration: 0.5, time: 1.5},     // G low
+        ],
+        melodyPattern: [
+            {note: 440, duration: 0.375, time: 0},     // A
+            {note: 466.16, duration: 0.125, time: 0.375}, // Bb
+            {note: 440, duration: 0.375, time: 0.5},   // A
+            {note: 392, duration: 0.125, time: 0.875},  // G
+            {note: 349.23, duration: 0.375, time: 1},   // F
+            {note: 329.63, duration: 0.125, time: 1.375}, // E
+            {note: 349.23, duration: 0.25, time: 1.5},  // F
+            {note: 440, duration: 0.25, time: 1.75}     // A
+        ],
+        tempo: 0.8
     }
 };
 
@@ -602,6 +658,7 @@ class Player {
         this.velY = 0;
         this.isHuman = true;
         this.onGround = false;
+        this.onLadder = false;
         this.facing = 1; // 1 = right, -1 = left
         this.animationFrame = 0;
         this.animationTimer = 0;
@@ -678,8 +735,8 @@ class Player {
             if (Math.abs(this.velX) < 0.1) this.velX = 0; // Stop completely when very slow
         }
         
-        // Jump
-        if ((keys[' '] || keys['arrowup'] || keys['w']) && this.onGround) {
+        // Jump - only if not on ladder and not in underground maze
+        if ((keys[' '] || (keys['arrowup'] && !this.onLadder && !level.isUnderground) || (keys['w'] && !this.onLadder && !level.isUnderground)) && this.onGround && !level.isUnderground) {
             this.velY = this.isHuman ? JUMP_FORCE : JUMP_FORCE * 0.8;
             this.onGround = false;
             createJumpSound();
@@ -712,8 +769,53 @@ class Player {
             this.sniffMode = false;
         }
         
+        // Check ladder collision
+        this.onLadder = false;
+        if (this.isHuman) {
+            level.ladders.forEach(ladder => {
+                if (this.x < ladder.x + ladder.width &&
+                    this.x + this.width > ladder.x &&
+                    this.y < ladder.y + ladder.height &&
+                    this.y + this.height > ladder.y) {
+                    this.onLadder = true;
+                }
+            });
+        }
+        
         // Apply physics
-        this.velY += GRAVITY;
+        if (this.onLadder) {
+            // Ladder climbing physics
+            this.velY = 0; // No gravity on ladder
+            
+            // Climb up/down
+            if (keys['arrowup'] || keys['w']) {
+                this.velY = -4;
+            } else if (keys['arrowdown'] || keys['s']) {
+                this.velY = 4;
+            }
+            
+            // Can still move horizontally on ladder
+            this.velX *= 0.5; // Slower horizontal movement
+        } else {
+            // Normal physics
+            if (!level.isUnderground) {
+                this.velY += GRAVITY;
+            }
+        }
+        
+        // Top-down movement for underground levels
+        if (level.isUnderground) {
+            // Allow vertical movement with arrow keys
+            if (keys['arrowup'] || keys['w']) {
+                this.velY = -5;
+            } else if (keys['arrowdown'] || keys['s']) {
+                this.velY = 5;
+            } else {
+                this.velY *= 0.8; // Friction for Y axis
+                if (Math.abs(this.velY) < 0.1) this.velY = 0;
+            }
+        }
+        
         this.x += this.velX;
         this.y += this.velY;
         
@@ -950,16 +1052,66 @@ class Platform {
     
     draw() {
         if (this.type === 'normal') {
-            ctx.fillStyle = '#8b4513';
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-            
-            // Add grass on top
-            ctx.fillStyle = '#228b22';
-            ctx.fillRect(this.x, this.y, this.width, 5);
+            if (level && level.isUnderground) {
+                // Underground burrow walls
+                ctx.fillStyle = '#2c1810';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Add texture to walls
+                ctx.fillStyle = '#1a0e08';
+                for (let i = 0; i < this.width; i += 10) {
+                    for (let j = 0; j < this.height; j += 10) {
+                        if (Math.random() > 0.7) {
+                            ctx.fillRect(this.x + i, this.y + j, 5, 5);
+                        }
+                    }
+                }
+                
+                // Edge highlighting for depth
+                ctx.strokeStyle = '#4a3525';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y, this.width, this.height);
+            } else {
+                // Normal above-ground platforms
+                ctx.fillStyle = '#8b4513';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Add grass on top
+                ctx.fillStyle = '#228b22';
+                ctx.fillRect(this.x, this.y, this.width, 5);
+            }
         } else if (this.type === 'moving') {
             ctx.fillStyle = '#4682b4';
             ctx.fillRect(this.x, this.y, this.width, this.height);
         }
+    }
+}
+
+// Ladder class for climbing
+class Ladder {
+    constructor(x, y, height) {
+        this.x = x;
+        this.y = y;
+        this.width = 40;
+        this.height = height;
+    }
+    
+    draw() {
+        ctx.save();
+        
+        // Ladder sides
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(this.x, this.y, 5, this.height);
+        ctx.fillRect(this.x + this.width - 5, this.y, 5, this.height);
+        
+        // Ladder rungs
+        ctx.fillStyle = '#A0522D';
+        const rungSpacing = 20;
+        for (let i = 0; i < this.height; i += rungSpacing) {
+            ctx.fillRect(this.x, this.y + i, this.width, 4);
+        }
+        
+        ctx.restore();
     }
 }
 
@@ -1091,6 +1243,67 @@ class InteractiveObject {
             ctx.font = '14px Arial';
             ctx.fillText('SHEEP PEN', this.x + 10, this.y + this.height + 20);
         }
+    }
+}
+
+// Burrow class for underground escape
+class Burrow extends InteractiveObject {
+    constructor(x, y, type = 'entrance', targetLevel = null) {
+        super(x, y, 'burrow');
+        this.burrowType = type; // 'entrance' or 'exit'
+        this.targetLevel = targetLevel; // For transitioning between levels
+        this.width = 60;
+        this.height = 40;
+        this.animationTimer = 0;
+    }
+    
+    draw() {
+        ctx.save();
+        
+        // Burrow hole
+        ctx.fillStyle = '#2c1810';
+        ctx.beginPath();
+        ctx.ellipse(this.x + this.width/2, this.y + this.height/2, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Inner darkness
+        ctx.fillStyle = '#1a0e08';
+        ctx.beginPath();
+        ctx.ellipse(this.x + this.width/2, this.y + this.height/2, this.width/2 - 5, this.height/2 - 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Dirt pile around entrance
+        ctx.fillStyle = '#4a3525';
+        for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const r = 8 + Math.sin(this.animationTimer + i) * 2;
+            ctx.beginPath();
+            ctx.arc(
+                this.x + this.width/2 + Math.cos(angle) * (this.width/2 + 5),
+                this.y + this.height/2 + Math.sin(angle) * (this.height/2 + 5),
+                r, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // Arrow indicator for exit
+        if (this.burrowType === 'exit') {
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.6 + Math.sin(this.animationTimer * 2) * 0.4;
+            
+            // Draw arrow pointing up
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width/2, this.y - 10);
+            ctx.lineTo(this.x + this.width/2 - 10, this.y);
+            ctx.moveTo(this.x + this.width/2, this.y - 10);
+            ctx.lineTo(this.x + this.width/2 + 10, this.y);
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+        
+        this.animationTimer += 0.05;
     }
 }
 
@@ -1983,6 +2196,9 @@ class Level {
         this.pigeons = levelData.pigeons || [];
         this.isBossLevel = levelData.isBossLevel || false;
         this.isPigeonLevel = levelData.isPigeonLevel || false;
+        this.isUnderground = levelData.isUnderground || false;
+        this.message = levelData.message || null;
+        this.ladders = levelData.ladders || [];
     }
     
     draw() {
@@ -1990,20 +2206,55 @@ class Level {
         ctx.fillStyle = this.background;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Draw clouds
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        for (let i = 0; i < 5; i++) {
-            const x = (i * 200 + Date.now() * 0.02) % (canvas.width + 100) - 50;
-            const y = 50 + i * 30;
-            ctx.beginPath();
-            ctx.arc(x, y, 30, 0, Math.PI * 2);
-            ctx.arc(x + 25, y, 25, 0, Math.PI * 2);
-            ctx.arc(x + 45, y, 20, 0, Math.PI * 2);
-            ctx.fill();
+        // Draw clouds only if not underground
+        if (!this.isUnderground) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            for (let i = 0; i < 5; i++) {
+                const x = (i * 200 + Date.now() * 0.02) % (canvas.width + 100) - 50;
+                const y = 50 + i * 30;
+                ctx.beginPath();
+                ctx.arc(x, y, 30, 0, Math.PI * 2);
+                ctx.arc(x + 25, y, 25, 0, Math.PI * 2);
+                ctx.arc(x + 45, y, 20, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        } else {
+            // Draw underground burrow texture
+            // Create gradient for tunnel effect
+            const gradient = ctx.createRadialGradient(
+                player.x + player.width/2, player.y + player.height/2, 50,
+                player.x + player.width/2, player.y + player.height/2, 200
+            );
+            gradient.addColorStop(0, '#3d2817');
+            gradient.addColorStop(1, '#1a0e08');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw dirt/rock texture
+            ctx.fillStyle = 'rgba(74, 53, 37, 0.3)';
+            for (let i = 0; i < 40; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 20 + 5;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw small pebbles
+            ctx.fillStyle = 'rgba(60, 40, 30, 0.5)';
+            for (let i = 0; i < 60; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                ctx.fillRect(x, y, Math.random() * 4 + 1, Math.random() * 4 + 1);
+            }
         }
         
         // Draw platforms
         this.platforms.forEach(platform => platform.draw());
+        
+        // Draw ladders
+        this.ladders.forEach(ladder => ladder.draw());
         
         // Draw objects
         this.objects.forEach(obj => obj.draw());
@@ -2151,6 +2402,99 @@ const levels = [
         startY: 400,
         background: '#b0c4de',
         isPigeonLevel: true
+    },
+    // Level 6 - Policeman Chase & Burrow Escape
+    {
+        platforms: [
+            new Platform(0, 500, 300, 76),
+            new Platform(350, 450, 150, 126),
+            new Platform(550, 400, 200, 176),
+            new Platform(800, 500, 224, 76)
+        ],
+        objects: [
+            new InteractiveObject(150, 460, 'treat'),
+            new InteractiveObject(425, 410, 'treat'),
+            new InteractiveObject(650, 360, 'treat'),
+            new Burrow(900, 460, 'entrance', 7), // Burrow leading to underground maze
+            new InteractiveObject(250, 460, 'treat', true), // Hidden
+            new InteractiveObject(600, 360, 'treat', true)  // Hidden
+        ],
+        policemen: [
+            new Policeman(300, 430) // Policeman to chase player
+        ],
+        startX: 50,
+        startY: 400,
+        background: '#4a5568',
+        message: 'Quick! Escape the policeman through the burrow!'
+    },
+    // Level 7 - Underground Maze (Top-down view)
+    {
+        platforms: [
+            // Outer walls (thick borders) - NO FLOOR
+            new Platform(0, 0, 1024, 20),      // Top wall
+            new Platform(0, 556, 1024, 20),    // Bottom wall
+            new Platform(0, 0, 20, 576),       // Left wall
+            new Platform(1004, 0, 20, 576),    // Right wall
+            
+            // Maze walls (creating a complex path)
+            // Horizontal walls
+            new Platform(100, 100, 200, 20),   // H1
+            new Platform(380, 100, 150, 20),   // H2
+            new Platform(200, 200, 250, 20),   // H3
+            new Platform(530, 200, 200, 20),   // H4
+            new Platform(100, 300, 150, 20),   // H5
+            new Platform(330, 300, 220, 20),   // H6
+            new Platform(630, 300, 150, 20),   // H7
+            new Platform(200, 400, 200, 20),   // H8
+            new Platform(480, 400, 250, 20),   // H9
+            new Platform(810, 400, 100, 20),   // H10
+            new Platform(100, 500, 300, 20),   // H11
+            new Platform(480, 500, 150, 20),   // H12
+            new Platform(710, 500, 200, 20),   // H13
+            
+            // Vertical walls
+            new Platform(100, 20, 20, 180),    // V1
+            new Platform(200, 120, 20, 180),   // V2
+            new Platform(300, 20, 20, 180),    // V3
+            new Platform(400, 120, 20, 100),   // V4
+            new Platform(530, 20, 20, 280),    // V5
+            new Platform(630, 220, 20, 180),   // V6
+            new Platform(730, 120, 20, 180),   // V7
+            new Platform(830, 220, 20, 100),   // V8
+            new Platform(100, 320, 20, 180),   // V9
+            new Platform(250, 320, 20, 100),   // V10
+            new Platform(400, 320, 20, 180),   // V11
+            new Platform(550, 320, 20, 100),   // V12
+            new Platform(730, 320, 20, 180),   // V13
+            new Platform(910, 20, 20, 480),    // V14 (near exit)
+            new Platform(330, 420, 20, 80),    // V15
+            new Platform(630, 420, 20, 80),    // V16
+            new Platform(810, 420, 20, 80)     // V17
+        ],
+        objects: [
+            // Treats scattered throughout the maze
+            new InteractiveObject(50, 50, 'treat'),
+            new InteractiveObject(250, 150, 'treat'),
+            new InteractiveObject(450, 50, 'treat'),
+            new InteractiveObject(680, 150, 'treat'),
+            new InteractiveObject(150, 250, 'treat'),
+            new InteractiveObject(350, 350, 'treat'),
+            new InteractiveObject(600, 250, 'treat'),
+            new InteractiveObject(850, 350, 'treat'),
+            new InteractiveObject(250, 450, 'treat'),
+            new InteractiveObject(550, 450, 'treat'),
+            new InteractiveObject(780, 450, 'treat'),
+            new Burrow(950, 250, 'exit', 8), // Exit burrow
+            // Hidden treats
+            new InteractiveObject(50, 350, 'treat', true),
+            new InteractiveObject(450, 250, 'treat', true),
+            new InteractiveObject(680, 350, 'treat', true)
+        ],
+        startX: 50,
+        startY: 500,
+        background: '#1a1a1a',
+        isUnderground: true,
+        message: 'Navigate the underground maze to find the exit! (Top-down view)'
     }
 ];
 
@@ -2308,7 +2652,11 @@ function checkSheepCollisions() {
 // Collision detection
 function checkCollisions() {
     // Reset ground state
-    player.onGround = false;
+    if (!level.isUnderground) {
+        player.onGround = false;
+    } else {
+        player.onGround = true; // Always "on ground" in top-down view
+    }
     
     // Check platform collisions
     level.platforms.forEach(platform => {
@@ -2318,31 +2666,98 @@ function checkCollisions() {
             player.y < platform.y + platform.height &&
             player.y + player.height > platform.y) {
             
-            // Landing on top
-            if (player.velY > 0 && player.y < platform.y) {
-                player.y = platform.y - player.height;
-                player.velY = 0;
-                player.onGround = true;
-            }
-            // Hitting from below
-            else if (player.velY < 0 && player.y > platform.y) {
-                player.y = platform.y + platform.height;
-                player.velY = 0;
-            }
-            // Side collisions
-            else if (player.velX > 0) {
-                player.x = platform.x - player.width;
-                player.velX = 0;
-            } else if (player.velX < 0) {
-                player.x = platform.x + platform.width;
-                player.velX = 0;
+            if (level.isUnderground) {
+                // Top-down collision handling - push player out of walls
+                const playerCenterX = player.x + player.width / 2;
+                const playerCenterY = player.y + player.height / 2;
+                const platformCenterX = platform.x + platform.width / 2;
+                const platformCenterY = platform.y + platform.height / 2;
+                
+                const dx = playerCenterX - platformCenterX;
+                const dy = playerCenterY - platformCenterY;
+                
+                // Calculate overlap
+                const overlapX = (player.width + platform.width) / 2 - Math.abs(dx);
+                const overlapY = (player.height + platform.height) / 2 - Math.abs(dy);
+                
+                // Push out from the smallest overlap
+                if (overlapX < overlapY) {
+                    // Push horizontally
+                    if (dx > 0) {
+                        player.x = platform.x + platform.width;
+                    } else {
+                        player.x = platform.x - player.width;
+                    }
+                    player.velX = 0;
+                } else {
+                    // Push vertically
+                    if (dy > 0) {
+                        player.y = platform.y + platform.height;
+                    } else {
+                        player.y = platform.y - player.height;
+                    }
+                    player.velY = 0;
+                }
+            } else {
+                // Normal platformer collision
+                // Landing on top
+                if (player.velY > 0 && player.y < platform.y) {
+                    player.y = platform.y - player.height;
+                    player.velY = 0;
+                    player.onGround = true;
+                }
+                // Hitting from below
+                else if (player.velY < 0 && player.y > platform.y) {
+                    player.y = platform.y + platform.height;
+                    player.velY = 0;
+                }
+                // Side collisions
+                else if (player.velX > 0) {
+                    player.x = platform.x - player.width;
+                    player.velX = 0;
+                } else if (player.velX < 0) {
+                    player.x = platform.x + platform.width;
+                    player.velX = 0;
+                }
             }
         }
     });
     
     // Check object collisions
     level.objects = level.objects.filter(obj => {
-        if (obj.type === 'treat') {
+        if (obj.type === 'burrow') {
+            // Check burrow collision
+            if (player.x < obj.x + obj.width &&
+                player.x + player.width > obj.x &&
+                player.y < obj.y + obj.height &&
+                player.y + player.height > obj.y) {
+                
+                // Only corgis can use burrows
+                if (!player.isHuman) {
+                    if (obj.burrowType === 'entrance' && obj.targetLevel) {
+                        // Transition to underground level
+                        currentLevel = obj.targetLevel;
+                        level = new Level(levels[currentLevel - 1]);
+                        player = new Player(level.startX, level.startY);
+                        document.getElementById('currentLevel').textContent = currentLevel;
+                        showMessage(level.message || 'Entering the burrow...', 180);
+                        createBackgroundMusic(currentLevel);
+                    } else if (obj.burrowType === 'exit') {
+                        // Check if all treats collected in maze
+                        const treatsLeft = level.objects.filter(o => o.type === 'treat').length;
+                        if (treatsLeft === 0) {
+                            // Exit to next level
+                            nextLevel();
+                        } else {
+                            showMessage(`Collect all ${treatsLeft} treats before exiting!`, 120);
+                        }
+                    }
+                } else {
+                    showMessage('Transform into a corgi to use the burrow!', 120);
+                }
+            }
+            return true; // Don't remove burrows
+        } else if (obj.type === 'treat') {
             // Check if we're sniffing near a hidden treat
             if (obj.hidden && !obj.discovered && !player.isHuman && player.sniffMode) {
                 const dist = Math.hypot(obj.x + 20 - (player.x + player.width/2), 
@@ -2412,8 +2827,17 @@ function checkCollisions() {
     });
     
     // Check bounds
-    if (player.y > canvas.height) {
-        resetLevel();
+    if (level.isUnderground) {
+        // Keep player within screen bounds for top-down maze
+        if (player.x < 0) player.x = 0;
+        if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+        if (player.y < 0) player.y = 0;
+        if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
+    } else {
+        // Normal level - reset if fall off screen
+        if (player.y > canvas.height) {
+            resetLevel();
+        }
     }
     
     // Check level completion
@@ -2602,6 +3026,10 @@ function nextLevel() {
     if (currentLevel === 4) {
         setTimeout(() => {
             showMessage('Farmers are angry! Police will arrest humans! Transform to corgi and run 3 seconds to evade!', 400);
+        }, 500);
+    } else if (level.message) {
+        setTimeout(() => {
+            showMessage(level.message, 300);
         }, 500);
     } else if (currentLevel === 5) {
         setTimeout(() => {
